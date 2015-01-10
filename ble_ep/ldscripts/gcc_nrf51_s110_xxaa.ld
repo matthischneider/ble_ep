@@ -10,4 +10,4 @@ MEMORY
 }
 
 
-INCLUDE "gcc_nrf51_common.ld"
+INCLUDE C:\Users\Matthias\git\ble_ep\ble_ep\ldscripts\gcc_nrf51_common.ld

@@ -10,4 +10,4 @@ MEMORY
 }
 
 
-INCLUDE "gcc_nrf51_common.ld"
+INCLUDE C:\files\workspace\testcpp\ldscripts\gcc_nrf51_common.ld
