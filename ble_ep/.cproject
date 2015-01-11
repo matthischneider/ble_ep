@@ -88,13 +88,13 @@
 							<builder buildPath="${workspace_loc:/Display}/Default" id="org.eclipse.cdt.build.core.internal.builder.353135433" keepEnvironmentInBuildfile="false" name="CDT Internal Builder" superClass="org.eclipse.cdt.build.core.internal.builder"/>
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.739271942" name="Cross ARM GNU Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler">
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.include.paths.687000236" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ble_ep/include/Images}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;C:\Nordic Semiconductor\nRF51 SDK_v6.1.0.0\Nordic\nrf51822\Include\gcc&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\ble&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\ble\ble_services&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\ble\device_manager&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\sd_common&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\sdk&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ble_ep/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\s110&quot;"/>
 								</option>
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.usepreprocessor.84132030" name="Use preprocessor" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.usepreprocessor" value="true" valueType="boolean"/>
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.defs.2117134045" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.defs" valueType="definedSymbols">
@@ -112,14 +112,13 @@
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\app_common&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\gcc&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ble_ep/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ble_ep/include/Images}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\s110&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\ble&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\ble\ble_services&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\ble\device_manager&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\sd_common&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\sdk&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ble_ep/include}&quot;"/>
 								</option>
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs.1233755440" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="DEBUG"/>
@@ -147,6 +146,8 @@
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\ble\device_manager&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\sd_common&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\sdk&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ble_ep/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${NordicSDK}\nrf51822\Include\s110&quot;"/>
 								</option>
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.defs.672998379" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.defs" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="DEBUG"/>
@@ -195,6 +196,11 @@
 							</tool>
 						</toolChain>
 					</folderInfo>
+					<fileInfo id="0.1463165534.1791593762" name="nrf_delay.c" rcbsApplicability="disable" resourcePath="src/nrf_delay.c" toolsToInvoke="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1188065566.1473897284">
+						<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1188065566.1473897284" name="Cross ARM C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1188065566">
+							<inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.712233551" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input"/>
+						</tool>
+					</fileInfo>
 					<sourceEntries>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="include"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="src"/>
@@ -213,24 +219,24 @@
 			<resource resourceType="PROJECT" workspacePath="/Display"/>
 		</configuration>
 	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
+	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
 	<storageModule moduleId="scannerConfiguration">
 		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		<scannerConfigBuildInfo instanceId="0.1463165534;0.1463165534.;ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.1105424830;ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.input.1098103453">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="0.1463165534">
+		<scannerConfigBuildInfo instanceId="0.1463165534;0.1463165534.;cdt.managedbuild.tool.gnu.cross.cpp.compiler.1564870939;cdt.managedbuild.tool.gnu.cpp.compiler.input.974476976">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
 		<scannerConfigBuildInfo instanceId="0.1463165534;0.1463165534.;cdt.managedbuild.tool.gnu.cross.c.compiler.1038927406;cdt.managedbuild.tool.gnu.c.compiler.input.1634460092">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="0.1463165534;0.1463165534.;cdt.managedbuild.tool.gnu.cross.cpp.compiler.1564870939;cdt.managedbuild.tool.gnu.cpp.compiler.input.974476976">
-			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
 		<scannerConfigBuildInfo instanceId="0.1463165534;0.1463165534.;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1188065566;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.1509213404">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="0.1463165534">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
 	</storageModule>
-	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
-	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
 </cproject>

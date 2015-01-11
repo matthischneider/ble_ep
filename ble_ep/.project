@@ -81,6 +81,11 @@
 			<locationURI>NordicSDK/nrf51822/Source/app_common/crc16.c</locationURI>
 		</link>
 		<link>
+			<name>src/nrf_delay.c</name>
+			<type>1</type>
+			<locationURI>NordicSDK/nrf51822/Source/nrf_delay/nrf_delay.c</locationURI>
+		</link>
+		<link>
 			<name>src/pstorage.c</name>
 			<type>1</type>
 			<locationURI>NordicSDK/nrf51822/Source/app_common/pstorage.c</locationURI>
@@ -90,11 +95,20 @@
 			<type>1</type>
 			<locationURI>NordicSDK/nrf51822/Source/sd_common/softdevice_handler.c</locationURI>
 		</link>
+		<link>
+			<name>src/spi_master.c</name>
+			<type>1</type>
+			<locationURI>NordicSDK/nrf51822/Source/spi_master/spi_master.c</locationURI>
+		</link>
 	</linkedResources>
 	<variableList>
 		<variable>
 			<name>NordicSDK</name>
 			<value>file:/C:/Nordic%20Semiconductor/nRF51%20SDK_v6.1.0.0/Nordic</value>
+		</variable>
+		<variable>
+			<name>copy_PARENT</name>
+			<value>$%7BPARENT-2-ECLIPSE_HOME%7D</value>
 		</variable>
 	</variableList>
 </projectDescription>
