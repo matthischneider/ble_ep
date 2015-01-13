@@ -46,6 +46,7 @@
 #include "ble_debug_assert_handler.h"
 #include "pstorage.h"
 #include "display.h"
+#include "cat_1_44.h"
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include or not the service_changed characteristic. if not enabled, the server's database cannot be changed for the lifetime of the device*/
 
@@ -87,8 +88,6 @@
 
 static ble_gap_sec_params_t m_sec_params; /**< Security requirements for this application. */
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle of the current connection. */
-
-static epd_t* epd;
 
 // YOUR_JOB: Modify these according to requirements (e.g. if other event types are to pass through
 //           the scheduler).
@@ -323,7 +322,7 @@ static void advertising_start(void) {
 
 	err_code = sd_ble_gap_adv_start(&adv_params);
 	APP_ERROR_CHECK(err_code);
-	//TODO: Print
+
 }
 
 /**@brief Function for handling the Application's BLE Stack events.
@@ -534,7 +533,7 @@ static void power_manage(void) {
 }
 
 static void display_init(void) {
-	epdInit(epd, PIN_CS, PIN_PANEL_ON, PIN_BORDER, PIN_DISCHARG, PIN_PWM,
+	epdInit(PIN_CS, PIN_PANEL_ON, PIN_BORDER, PIN_DISCHARG, PIN_PWM,
 			PIN_RESET, PIN_BUSY, PIN_SCK, PIN_MISO, PIN_MOSI);
 }
 
@@ -560,6 +559,9 @@ int main(void) {
 
 	// Enter main loop
 	for (;;) {
+		epdBegin();
+		epdFrame(cat_1_44_bits);
+		epdEnd();
 		app_sched_execute();
 		power_manage();
 	}
