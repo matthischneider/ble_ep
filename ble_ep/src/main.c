@@ -47,6 +47,7 @@
 #include "pstorage.h"
 #include "display.h"
 #include "cat_1_44.h"
+#include "aphrodite_1_44.h"
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include or not the service_changed characteristic. if not enabled, the server's database cannot be changed for the lifetime of the device*/
 
@@ -322,7 +323,9 @@ static void advertising_start(void) {
 
 	err_code = sd_ble_gap_adv_start(&adv_params);
 	APP_ERROR_CHECK(err_code);
-
+	epdBegin();
+	epdFrame(cat_1_44_bits);
+	epdEnd();
 }
 
 /**@brief Function for handling the Application's BLE Stack events.
@@ -348,6 +351,10 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 		 err_code = app_button_enable();
 		 APP_ERROR_CHECK(err_code);
 		 */
+		epdBegin();
+		epdFrame(aphrodite_1_44_bits);
+		epdEnd();
+
 		break;
 
 	case BLE_GAP_EVT_DISCONNECTED:
@@ -559,9 +566,7 @@ int main(void) {
 
 	// Enter main loop
 	for (;;) {
-		epdBegin();
-		epdFrame(cat_1_44_bits);
-		epdEnd();
+
 		app_sched_execute();
 		power_manage();
 	}

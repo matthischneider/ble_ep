@@ -65,14 +65,8 @@ void epdSPISend(uint8_t cs_pin, const uint8_t *buffer, uint16_t length) {
 }
 
 void epdPWMStart(int pin) {
-	nrf_pwm_config_t pwm_config = PWM_DEFAULT_CONFIG
-	;
-	pwm_config.mode = PWM_MODE_BUZZER_64;
-	pwm_config.num_channels = 1;
-	pwm_config.gpio_num[0] = pin;
-
-	nrf_pwm_init(&pwm_config);
-	nrf_pwm_set_value(0, 25);
+	nrf_pwm_set_value(0, 50);
+	nrf_pwm_set_enabled(1);
 }
 
 void epdPWMStop(int pin) {
@@ -88,12 +82,14 @@ void epdInit(uint8_t pinCS, uint8_t pinPanelOn, uint8_t pinBorder,
 	epd.pinDischarge = pinDischarge;
 	epd.pinPWM = pinPWM;
 	epd.pinReset = pinReset;
+	epd.pinCS = pinCS;
 
 	nrf_gpio_cfg_output(epd.pinPanelOn);
 	nrf_gpio_cfg_output(epd.pinBorder);
 	nrf_gpio_cfg_output(epd.pinDischarge);
 	nrf_gpio_cfg_output(epd.pinPWM);
 	nrf_gpio_cfg_output(epd.pinReset);
+	nrf_gpio_cfg_output(epd.pinCS);
 
 	nrf_gpio_pin_clear(epd.pinPanelOn);
 	nrf_gpio_pin_clear(epd.pinBorder);
@@ -108,14 +104,13 @@ void epdInit(uint8_t pinCS, uint8_t pinPanelOn, uint8_t pinBorder,
 	epd.pinCLK = pinCLK;
 	epd.pinMISO = pinMISO;
 	epd.pinMOSI = pinMOSI;
-	epd.pinCS = pinCS;
+
 
 	epd.stageTime = 480;
 	epd.linesPerDisplay = 96;
 	epd.dotsPerLine = 128;
 	epd.bytesPerLine = 16;
 	epd.bytesPerScan = 24;
-
 
 	epd.spi_config.SPI_Freq = SPI_FREQUENCY_FREQUENCY_M8; /**< SPI master frequency */
 	epd.spi_config.SPI_Pin_SCK = epd.pinCLK; /**< SCK pin number. */
@@ -129,6 +124,14 @@ void epdInit(uint8_t pinCS, uint8_t pinPanelOn, uint8_t pinBorder,
 	epd.spi_config.SPI_CONFIG_ORDER = SPI_CONFIG_ORDER_MsbFirst; /**< Bytes order LSB or MSB shifted out first. */
 	epd.spi_config.SPI_CONFIG_CPOL = SPI_CONFIG_CPOL_ActiveHigh; /**< Serial clock polarity ACTIVEHIGH or ACTIVELOW. */
 	epd.spi_config.SPI_CONFIG_CPHA = SPI_CONFIG_CPHA_Leading; /**< Serial clock phase LEADING or TRAILING. */
+
+	nrf_pwm_config_t pwm_config = PWM_DEFAULT_CONFIG	;
+	pwm_config.mode = PWM_MODE_BUZZER_100;
+	pwm_config.num_channels = 1;
+	pwm_config.gpio_num[0] = pinPWM;
+
+	nrf_pwm_init(&pwm_config);
+
 }
 
 void epdBegin() {
@@ -254,12 +257,12 @@ void epdBegin() {
 }
 
 void epdEnd() {
+	epdSPIOn();
 
 	// dummy frame
 	//EPD_frame_fixed(0x55, EPD_normal);
 	epdLine(0x7fffu, 0, 0x55);
 
-	epdSPIOn();
 
 	// latch reset turn on
 	nrf_delay_ms(10);
@@ -354,7 +357,7 @@ void epdFrame(const uint8_t *image) {
 void epdLine(uint16_t line, const uint8_t *data,
 		uint8_t fixed_value) {
 
-	int delay = 10;
+	int delay = 3;
 	cursor = 0;
 	//epdSPIon();
 
