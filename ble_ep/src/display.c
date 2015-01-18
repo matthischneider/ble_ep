@@ -357,14 +357,14 @@ void epdFrame(const uint8_t *image) {
 void epdLine(uint16_t line, const uint8_t *data,
 		uint8_t fixed_value) {
 
-	int delay = 3;
+	int delay = 10;
 	cursor = 0;
 	//epdSPIon();
 
 	// gate and source voltage levels
-	nrf_delay_ms(10);
+	nrf_delay_us(delay);
 	epdSPISend(epd.pinCS, CU8(0x70, 0x04), 2);
-	nrf_delay_ms(10);
+	nrf_delay_us(delay);
 	epdSPISend(epd.pinCS, CU8(0x72, 0x03), 2);
 
 	// send data
