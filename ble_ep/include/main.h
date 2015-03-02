@@ -27,7 +27,6 @@
 #define BUTTON_STOP    7
 #define BUTTON_PULL    NRF_GPIO_PIN_NOPULL
 
-#define PIN_TEMP	   0
 #define PIN_PANEL_ON   24
 #define PIN_BORDER     25
 #define PIN_DISCHARG   18
@@ -36,8 +35,8 @@
 #define PIN_BUSY       30
 #define PIN_CS         16
 #define PIN_SCK        23
-#define PIN_MOSI       25
+#define PIN_MOSI       21
 #define PIN_MISO       22
-
+#define PIN_BTN       0
 
 #endif  // NRF6310_H__
