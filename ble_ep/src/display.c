@@ -142,16 +142,19 @@ void epdBegin() {
 	nrf_gpio_pin_write(epd.pinDischarge, 0);
 	nrf_gpio_pin_write(epd.pinBorder, 0);
 	nrf_gpio_pin_write(epd.pinCS, 0);
+	nrf_gpio_pin_write(epd.pinPWM, 0);
+	nrf_gpio_pin_write(epd.pinPWM, 1);
+	nrf_gpio_pin_write(epd.pinPWM, 0);
+	nrf_gpio_pin_write(epd.pinPWM, 1);
 
 	epdSPIOn();
 
 	epdPWMStart(epd.pinPWM);
-	nrf_delay_ms(25);                       // Al0 time for PWN to start up
+	nrf_delay_ms(5);                       // Al0 time for PWN to start up
 	nrf_gpio_pin_write(epd.pinPanelOn, 1);
 	nrf_delay_ms(10);
 
 	nrf_gpio_pin_write(epd.pinReset, 1);
-	nrf_gpio_pin_write(epd.pinBorder, 1);
 	nrf_gpio_pin_write(epd.pinCS, 1);
 	nrf_delay_ms(5);
 

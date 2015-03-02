@@ -48,6 +48,7 @@
 #include "display.h"
 #include "cat_1_44.h"
 #include "aphrodite_1_44.h"
+#include "graphics.h"
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include or not the service_changed characteristic. if not enabled, the server's database cannot be changed for the lifetime of the device*/
 
@@ -62,7 +63,7 @@
 
 // YOUR_JOB: Modify these according to requirements.
 #define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
-#define APP_TIMER_MAX_TIMERS            2                                           /**< Maximum number of simultaneously created timers. */
+#define APP_TIMER_MAX_TIMERS            3                                           /**< Maximum number of simultaneously created timers. */
 #define APP_TIMER_OP_QUEUE_SIZE         4                                           /**< Size of timer operation queues. */
 
 #define MIN_CONN_INTERVAL               MSEC_TO_UNITS(500, UNIT_1_25_MS)            /**< Minimum acceptable connection interval (0.5 seconds). */
@@ -90,6 +91,13 @@
 static ble_gap_sec_params_t m_sec_params; /**< Security requirements for this application. */
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle of the current connection. */
 
+#define DISPLAY_INTERVAL APP_TIMER_TICKS(1000, APP_TIMER_PRESCALER)
+static app_timer_id_t m_display_timer_id;
+static uint8_t blink = 0;
+static char* txt[5] = { "", "", "", "", "" };
+static int txt_p = 0;
+static uint32_t m_bat_voltage;
+
 // YOUR_JOB: Modify these according to requirements (e.g. if other event types are to pass through
 //           the scheduler).
 #define SCHED_MAX_EVENT_DATA_SIZE       sizeof(app_timer_event_t)                   /**< Maximum size of scheduler events. Note that scheduler BLE stack events do not contain any data, as the events are being pulled from the stack in the event handler. */
@@ -97,6 +105,14 @@ static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle of the curr
 
 // Persistent storage system event handler
 void pstorage_sys_event_handler(uint32_t p_evt);
+
+void debug(char *msg) {
+	txt[txt_p] = msg;
+	txt_p = txt_p + 1;
+	if (txt_p == 5) {
+		txt_p = 0;
+	}
+}
 
 /**@brief Function for error handling, which is called when an error has occurred.
  *
@@ -139,6 +155,16 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name) {
 	app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
 
+static void sample() {
+	uint32_t p_is_running = 0;
+
+	sd_clock_hfclk_request();
+	while (!p_is_running) {  				//wait for the hfclk to be available
+		sd_clock_hfclk_is_running((&p_is_running));
+	}
+	NRF_ADC->TASKS_START = 1;							//Start ADC sampling
+}
+
 /**@brief Function for handling Service errors.
  *
  * @details A pointer to this function will be passed to each service which may need to inform the
@@ -154,6 +180,38 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name) {
  APP_ERROR_HANDLER(nrf_error);
  } */
 
+static void display_timer_timeout_handler(void * p_context) {
+	UNUSED_PARAMETER(p_context);
+	sample();
+
+	gFillRect(0, 0, 128, 96, 0);
+	gRect(0, 90, m_bat_voltage, 3, 1);
+
+	for (int i = 0; i < 5; i++) {
+		gDrawString(0, i * 20, txt[i], 1);
+	}
+
+	gFillRect(0, 0, 5, 5, blink);
+
+	if (blink == 0) {
+		blink = 1;
+	} else {
+		blink = 0;
+	}
+
+	nrf_gpio_cfg_input(PIN_BTN, NRF_GPIO_PIN_PULLUP);
+	if (nrf_gpio_pin_read(PIN_BTN)) {
+		gRect(6, 0, 5, 5, 1);
+	} else {
+		gFillRect(6, 0, 5, 5, 1);
+	}
+
+	//epdBegin();
+	epdFrame(graphicsBuffer);
+	epdFrame(graphicsBuffer);
+	//epdEnd();
+}
+
 /**@brief Function for the Timer initialization.
  *
  * @details Initializes the timer module.
@@ -162,13 +220,50 @@ static void timers_init(void) {
 	// Initialize timer module, making it use the scheduler
 	APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS,
 			APP_TIMER_OP_QUEUE_SIZE, true);
-
+	uint32_t err_code;
 	/* YOUR_JOB: Create any timers to be used by the application.
 	 Below is an example of how to create a timer.
 	 For every new timer needed, increase the value of the macro APP_TIMER_MAX_TIMERS by
-	 one.
-	 err_code = app_timer_create(&m_app_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler);
-	 APP_ERROR_CHECK(err_code); */
+	 one.*/
+	err_code = app_timer_create(&m_display_timer_id, APP_TIMER_MODE_REPEATED,
+			display_timer_timeout_handler);
+	APP_ERROR_CHECK(err_code);
+}
+
+/** Configures and enables the ADC
+ */
+void ADC_init(void) {
+
+	/* Enable interrupt on ADC sample ready event*/
+		NRF_ADC->INTENSET = ADC_INTENSET_END_Msk;
+		sd_nvic_SetPriority(ADC_IRQn, NRF_APP_PRIORITY_LOW);
+		sd_nvic_EnableIRQ(ADC_IRQn);
+
+		NRF_ADC->CONFIG	= (ADC_CONFIG_EXTREFSEL_None << ADC_CONFIG_EXTREFSEL_Pos) /* Bits 17..16 : ADC external reference pin selection. */
+										| (ADC_CONFIG_PSEL_AnalogInput7 << ADC_CONFIG_PSEL_Pos)					/*!< Use analog input 2 as analog input. */
+										| (ADC_CONFIG_REFSEL_VBG << ADC_CONFIG_REFSEL_Pos)							/*!< Use internal 1.2V bandgap voltage as reference for conversion. */
+										| (ADC_CONFIG_INPSEL_AnalogInputNoPrescaling << ADC_CONFIG_INPSEL_Pos) /*!< Analog input specified by PSEL with no prescaling used as input for the conversion. */
+										| (ADC_CONFIG_RES_10bit << ADC_CONFIG_RES_Pos);									/*!< 8bit ADC resolution. */
+
+		/* Enable ADC*/
+		NRF_ADC->ENABLE = ADC_ENABLE_ENABLE_Enabled;
+}
+
+void ADC_IRQHandler(void)
+{
+	/* Clear dataready event */
+  NRF_ADC->EVENTS_END = 0;
+
+  m_bat_voltage=NRF_ADC->RESULT;
+  m_bat_voltage = (m_bat_voltage * 1200 / 1024);
+  m_bat_voltage = m_bat_voltage * 122/22;
+
+
+  //Use the STOP task to save current. Workaround for PAN_028 rev1.5 anomaly 1.
+  NRF_ADC->TASKS_STOP = 1;
+
+	//Release the external crystal
+	sd_clock_hfclk_release();
 }
 
 /**@brief Function for the GAP initialization.
@@ -262,7 +357,7 @@ static void on_conn_params_evt(ble_conn_params_evt_t * p_evt) {
 
 	if (p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED) {
 		err_code = sd_ble_gap_disconnect(m_conn_handle,
-				BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
+		BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
 		APP_ERROR_CHECK(err_code);
 	}
 }
@@ -299,11 +394,12 @@ static void conn_params_init(void) {
 /**@brief Function for starting timers.
  */
 static void timers_start(void) {
+	uint32_t err_code;
 	/* YOUR_JOB: Start your timers. below is an example of how to start a timer.
 	 uint32_t err_code;
-
-	 err_code = app_timer_start(m_app_timer_id, TIMER_INTERVAL, NULL);
-	 APP_ERROR_CHECK(err_code); */
+	 */
+	err_code = app_timer_start(m_display_timer_id, DISPLAY_INTERVAL, NULL);
+	APP_ERROR_CHECK(err_code);
 }
 
 /**@brief Function for starting advertising.
@@ -323,9 +419,7 @@ static void advertising_start(void) {
 
 	err_code = sd_ble_gap_adv_start(&adv_params);
 	APP_ERROR_CHECK(err_code);
-	epdBegin();
-	epdFrame(cat_1_44_bits);
-	epdEnd();
+	debug("Advertising ...");
 }
 
 /**@brief Function for handling the Application's BLE Stack events.
@@ -336,12 +430,12 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 	uint32_t err_code;
 	static ble_gap_evt_auth_status_t m_auth_status;
 	ble_gap_enc_info_t * p_enc_info;
-
+	debug("Bluetooth event:");
 	switch (p_ble_evt->header.evt_id) {
 	case BLE_GAP_EVT_CONNECTED:
+		debug("BLE_GAP_EVT_CONNECTED");
 		//TODO: Print
 		m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-
 		/* YOUR_JOB: Uncomment this part if you are using the app_button module to handle button
 		 events (assuming that the button events are only needed in connected
 		 state). If this is uncommented out here,
@@ -351,14 +445,11 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 		 err_code = app_button_enable();
 		 APP_ERROR_CHECK(err_code);
 		 */
-		epdBegin();
-		epdFrame(aphrodite_1_44_bits);
-		epdEnd();
-
 		break;
 
 	case BLE_GAP_EVT_DISCONNECTED:
 		//TODO: Print
+		debug("BLE_GAP_EVT_DISCONNECTED");
 		m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
 		/* YOUR_JOB: Uncomment this part if you are using the app_button module to handle button
@@ -367,31 +458,37 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 		 err_code = app_button_disable();
 		 APP_ERROR_CHECK(err_code);
 		 */
-
 		advertising_start();
 		break;
 
 	case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
+		debug("BLE_GAP_EVT_SEC_PARAMS_REQUEST");
 		err_code = sd_ble_gap_sec_params_reply(m_conn_handle,
 		BLE_GAP_SEC_STATUS_SUCCESS, &m_sec_params);
+		gFillRect(0, 0, 128, 96, 0);
 		APP_ERROR_CHECK(err_code);
+
 		break;
 
 	case BLE_GATTS_EVT_SYS_ATTR_MISSING:
+		debug("BLE_GATTS_EVT_SYS_ATTR_MISSING");
 		err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0);
+		gFillRect(0, 0, 128, 96, 0);
 		APP_ERROR_CHECK(err_code);
 		break;
 
 	case BLE_GAP_EVT_AUTH_STATUS:
+		debug("BLE_GAP_EVT_AUTH_STATUS");
 		m_auth_status = p_ble_evt->evt.gap_evt.params.auth_status;
 		break;
 
 	case BLE_GAP_EVT_SEC_INFO_REQUEST:
+		debug("BLE_GAP_EVT_SEC_INFO_REQUEST");
 		p_enc_info = &m_auth_status.periph_keys.enc_info;
 		if (p_enc_info->div
 				== p_ble_evt->evt.gap_evt.params.sec_info_request.div) {
 			err_code = sd_ble_gap_sec_info_reply(m_conn_handle, p_enc_info,
-					NULL);
+			NULL);
 			APP_ERROR_CHECK(err_code);
 		} else {
 			// No keys found for this device
@@ -401,10 +498,11 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 		break;
 
 	case BLE_GAP_EVT_TIMEOUT:
+
 		if (p_ble_evt->evt.gap_evt.params.timeout.src
 				== BLE_GAP_TIMEOUT_SRC_ADVERTISEMENT) {
 			//TODO: Print
-
+			debug("BLE_GAP_EVT_TIMEOUT");
 			// Configure buttons with sense level low as wakeup source.
 			nrf_gpio_cfg_sense_input(WAKEUP_BUTTON_PIN,
 			BUTTON_PULL, NRF_GPIO_PIN_SENSE_LOW);
@@ -412,6 +510,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 			// Go to system-off mode (this function will not return; wakeup will cause a reset)
 			err_code = sd_power_system_off();
 			APP_ERROR_CHECK(err_code);
+		} else {
+			debug("BLE_GAP_EVT_OTHER_TIMEOUT");
 		}
 		break;
 
@@ -462,7 +562,7 @@ static void ble_stack_init(void) {
 	ble_enable_params_t ble_enable_params;
 	memset(&ble_enable_params, 0, sizeof(ble_enable_params));
 	ble_enable_params.gatts_enable_params.service_changed =
-			IS_SRVC_CHANGED_CHARACT_PRESENT;
+	IS_SRVC_CHANGED_CHARACT_PRESENT;
 	err_code = sd_ble_enable(&ble_enable_params);
 	APP_ERROR_CHECK(err_code);
 
@@ -519,7 +619,7 @@ static void buttons_init(void) {
 	// Note: Array must be static because a pointer to it will be saved in the Button handler
 	//       module.
 	static app_button_cfg_t buttons[] = { { WAKEUP_BUTTON_PIN,
-			APP_BUTTON_ACTIVE_LOW, BUTTON_PULL, NULL },
+	APP_BUTTON_ACTIVE_LOW, BUTTON_PULL, NULL },
 	// YOUR_JOB: Add other buttons to be used:
 	// {MY_BUTTON_PIN,     false, BUTTON_PULL, button_event_handler}
 			};
@@ -541,7 +641,7 @@ static void power_manage(void) {
 
 static void display_init(void) {
 	epdInit(PIN_CS, PIN_PANEL_ON, PIN_BORDER, PIN_DISCHARG, PIN_PWM,
-			PIN_RESET, PIN_BUSY, PIN_SCK, PIN_MISO, PIN_MOSI);
+	PIN_RESET, PIN_BUSY, PIN_SCK, PIN_MISO, PIN_MOSI);
 }
 
 /**@brief Function for application main entry.
@@ -559,17 +659,19 @@ int main(void) {
 	services_init();
 	conn_params_init();
 	sec_params_init();
-
+	ADC_init();
+	epdBegin();
 	// Start execution
 	timers_start();
 	advertising_start();
 
 	// Enter main loop
-	for (;;) {
 
+	for (;;) {
 		app_sched_execute();
 		power_manage();
 	}
+	//epdEnd();
 }
 
 /**
