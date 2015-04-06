@@ -37,6 +37,7 @@
 #include "ble_srv_common.h"
 #include "ble_advdata.h"
 #include "ble_conn_params.h"
+#include "ble_display_service.h"
 #include "app_scheduler.h"
 #include "softdevice_handler.h"
 #include "app_timer.h"
@@ -46,17 +47,15 @@
 #include "ble_debug_assert_handler.h"
 #include "pstorage.h"
 #include "display.h"
-#include "cat_1_44.h"
-#include "aphrodite_1_44.h"
 #include "graphics.h"
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include or not the service_changed characteristic. if not enabled, the server's database cannot be changed for the lifetime of the device*/
 
-#define WAKEUP_BUTTON_PIN               BUTTON_0                                    /**< Button used to wake up the application. */
+#define WAKEUP_BUTTON_PIN               PIN_BTN                                    /**< Button used to wake up the application. */
 // YOUR_JOB: Define any other buttons to be used by the applications:
 // #define MY_BUTTON_PIN                   BUTTON_1
 
-#define DEVICE_NAME                     "Nordic_Template"                           /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "Dis"                           /**< Name of device. Will be included in the advertising data. */
 
 #define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
@@ -66,8 +65,8 @@
 #define APP_TIMER_MAX_TIMERS            3                                           /**< Maximum number of simultaneously created timers. */
 #define APP_TIMER_OP_QUEUE_SIZE         4                                           /**< Size of timer operation queues. */
 
-#define MIN_CONN_INTERVAL               MSEC_TO_UNITS(500, UNIT_1_25_MS)            /**< Minimum acceptable connection interval (0.5 seconds). */
-#define MAX_CONN_INTERVAL               MSEC_TO_UNITS(1000, UNIT_1_25_MS)           /**< Maximum acceptable connection interval (1 second). */
+#define MIN_CONN_INTERVAL               MSEC_TO_UNITS(7.5, UNIT_1_25_MS)            /**< Minimum acceptable connection interval (0.05 seconds). */
+#define MAX_CONN_INTERVAL               MSEC_TO_UNITS(40, UNIT_1_25_MS)           /**< Maximum acceptable connection interval (0.1 second). */
 #define SLAVE_LATENCY                   0                                           /**< Slave latency. */
 #define CONN_SUP_TIMEOUT                MSEC_TO_UNITS(4000, UNIT_10_MS)             /**< Connection supervisory timeout (4 seconds). */
 #define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
@@ -94,9 +93,12 @@ static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle of the curr
 #define DISPLAY_INTERVAL APP_TIMER_TICKS(1000, APP_TIMER_PRESCALER)
 static app_timer_id_t m_display_timer_id;
 static uint8_t blink = 0;
-static char* txt[5] = { "", "", "", "", "" };
+static char* txt[5][30];
 static int txt_p = 0;
 static uint32_t m_bat_voltage;
+static ble_display_service_t m_display_service;
+static uint8_t m_status = BLE_GAP_STATUS_DISCONNECTED;
+
 
 // YOUR_JOB: Modify these according to requirements (e.g. if other event types are to pass through
 //           the scheduler).
@@ -107,7 +109,8 @@ static uint32_t m_bat_voltage;
 void pstorage_sys_event_handler(uint32_t p_evt);
 
 void debug(char *msg) {
-	txt[txt_p] = msg;
+	strncpy(txt[txt_p],msg,20);
+	//txt[txt_p] = msg;
 	txt_p = txt_p + 1;
 	if (txt_p == 5) {
 		txt_p = 0;
@@ -184,15 +187,25 @@ static void display_timer_timeout_handler(void * p_context) {
 	UNUSED_PARAMETER(p_context);
 	sample();
 
-	gFillRect(0, 0, 128, 96, 0);
-	gRect(0, 90, m_bat_voltage, 3, 1);
+	//gFillRect(0, 0, 128, 96, 0);
 
 	for (int i = 0; i < 5; i++) {
 		gDrawString(0, i * 20, txt[i], 1);
 	}
 
-	gFillRect(0, 0, 5, 5, blink);
-
+	switch (m_status) {
+		case BLE_GAP_STATUS_ADVERTISING:
+			gFillRect(0, 0, 5, 5, blink);
+			break;
+		case BLE_GAP_STATUS_DISCONNECTED:
+			gFillRect(0, 0, 5, 5, 0);
+			break;
+		case BLE_GAP_STATUS_CONNECTED:
+			gFillRect(0, 0, 5, 5, 1);
+			break;
+		default:
+			break;
+	}
 	if (blink == 0) {
 		blink = 1;
 	} else {
@@ -201,6 +214,7 @@ static void display_timer_timeout_handler(void * p_context) {
 
 	nrf_gpio_cfg_input(PIN_BTN, NRF_GPIO_PIN_PULLUP);
 	if (nrf_gpio_pin_read(PIN_BTN)) {
+		gFillRect(6, 0, 5, 5, 0);
 		gRect(6, 0, 5, 5, 1);
 	} else {
 		gFillRect(6, 0, 5, 5, 1);
@@ -208,7 +222,7 @@ static void display_timer_timeout_handler(void * p_context) {
 
 	//epdBegin();
 	epdFrame(graphicsBuffer);
-	epdFrame(graphicsBuffer);
+	//epdFrame(graphicsBuffer);
 	//epdEnd();
 }
 
@@ -308,7 +322,7 @@ static void advertising_init(void) {
 	uint8_t flags = BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
 
 	// YOUR_JOB: Use UUIDs for service(s) used in your application.
-	ble_uuid_t adv_uuids[] = { { BLE_UUID_BATTERY_SERVICE, BLE_UUID_TYPE_BLE } };
+	ble_uuid_t adv_uuids[] = {{DISPLAY_SERVICE_UUID_SERVICE, m_display_service.uuid_type}};
 
 	// Build and set advertising data
 	memset(&advdata, 0, sizeof(advdata));
@@ -324,10 +338,21 @@ static void advertising_init(void) {
 	APP_ERROR_CHECK(err_code);
 }
 
+static void display_write_handler(ble_display_service_t * p_display_service, char *msg)
+{
+    debug(msg);
+}
+
 /**@brief Function for initializing services that will be used by the application.
  */
 static void services_init(void) {
-	// YOUR_JOB: Add code to initialize the services used by the application.
+	uint32_t err_code;
+	    ble_display_service_init_t init;
+
+	    init.write_handler = display_write_handler;
+
+	    err_code = ble_display_service_init(&m_display_service, &init);
+	    APP_ERROR_CHECK(err_code);
 }
 
 /**@brief Function for initializing security parameters.
@@ -419,7 +444,7 @@ static void advertising_start(void) {
 
 	err_code = sd_ble_gap_adv_start(&adv_params);
 	APP_ERROR_CHECK(err_code);
-	debug("Advertising ...");
+	m_status = BLE_GAP_STATUS_ADVERTISING;
 }
 
 /**@brief Function for handling the Application's BLE Stack events.
@@ -430,11 +455,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 	uint32_t err_code;
 	static ble_gap_evt_auth_status_t m_auth_status;
 	ble_gap_enc_info_t * p_enc_info;
-	debug("Bluetooth event:");
 	switch (p_ble_evt->header.evt_id) {
 	case BLE_GAP_EVT_CONNECTED:
-		debug("BLE_GAP_EVT_CONNECTED");
-		//TODO: Print
 		m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
 		/* YOUR_JOB: Uncomment this part if you are using the app_button module to handle button
 		 events (assuming that the button events are only needed in connected
@@ -445,11 +467,11 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 		 err_code = app_button_enable();
 		 APP_ERROR_CHECK(err_code);
 		 */
+		m_status = BLE_GAP_STATUS_CONNECTED;
 		break;
 
 	case BLE_GAP_EVT_DISCONNECTED:
 		//TODO: Print
-		debug("BLE_GAP_EVT_DISCONNECTED");
 		m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
 		/* YOUR_JOB: Uncomment this part if you are using the app_button module to handle button
@@ -458,32 +480,26 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 		 err_code = app_button_disable();
 		 APP_ERROR_CHECK(err_code);
 		 */
+		m_status = BLE_GAP_STATUS_DISCONNECTED;
 		advertising_start();
 		break;
 
 	case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
-		debug("BLE_GAP_EVT_SEC_PARAMS_REQUEST");
 		err_code = sd_ble_gap_sec_params_reply(m_conn_handle,
 		BLE_GAP_SEC_STATUS_SUCCESS, &m_sec_params);
-		gFillRect(0, 0, 128, 96, 0);
 		APP_ERROR_CHECK(err_code);
-
 		break;
 
 	case BLE_GATTS_EVT_SYS_ATTR_MISSING:
-		debug("BLE_GATTS_EVT_SYS_ATTR_MISSING");
 		err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0);
-		gFillRect(0, 0, 128, 96, 0);
 		APP_ERROR_CHECK(err_code);
 		break;
 
 	case BLE_GAP_EVT_AUTH_STATUS:
-		debug("BLE_GAP_EVT_AUTH_STATUS");
 		m_auth_status = p_ble_evt->evt.gap_evt.params.auth_status;
 		break;
 
 	case BLE_GAP_EVT_SEC_INFO_REQUEST:
-		debug("BLE_GAP_EVT_SEC_INFO_REQUEST");
 		p_enc_info = &m_auth_status.periph_keys.enc_info;
 		if (p_enc_info->div
 				== p_ble_evt->evt.gap_evt.params.sec_info_request.div) {
@@ -501,17 +517,16 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 
 		if (p_ble_evt->evt.gap_evt.params.timeout.src
 				== BLE_GAP_TIMEOUT_SRC_ADVERTISEMENT) {
-			//TODO: Print
-			debug("BLE_GAP_EVT_TIMEOUT");
+			m_status = BLE_GAP_STATUS_DISCONNECTED;
+
 			// Configure buttons with sense level low as wakeup source.
-			nrf_gpio_cfg_sense_input(WAKEUP_BUTTON_PIN,
-			BUTTON_PULL, NRF_GPIO_PIN_SENSE_LOW);
+			nrf_gpio_cfg_sense_input(WAKEUP_BUTTON_PIN,	BUTTON_PULL, NRF_GPIO_PIN_SENSE_LOW);
 
 			// Go to system-off mode (this function will not return; wakeup will cause a reset)
+			epdEnd();
 			err_code = sd_power_system_off();
 			APP_ERROR_CHECK(err_code);
-		} else {
-			debug("BLE_GAP_EVT_OTHER_TIMEOUT");
+
 		}
 		break;
 
@@ -531,10 +546,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
 	on_ble_evt(p_ble_evt);
 	ble_conn_params_on_ble_evt(p_ble_evt);
-	/*
-	 YOUR_JOB: Add service ble_evt handlers calls here, like, for example:
-	 ble_bas_on_ble_evt(&m_bas, p_ble_evt);
-	 */
+	ble_display_service_on_ble_evt(&m_display_service, p_ble_evt);
 }
 
 /**@brief Function for dispatching a system event to interested modules.
@@ -655,8 +667,8 @@ int main(void) {
 	ble_stack_init();
 	scheduler_init();
 	gap_params_init();
-	advertising_init();
 	services_init();
+	advertising_init();
 	conn_params_init();
 	sec_params_init();
 	ADC_init();
@@ -673,6 +685,8 @@ int main(void) {
 	}
 	//epdEnd();
 }
+
+
 
 /**
  * @}

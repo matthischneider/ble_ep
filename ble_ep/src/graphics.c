@@ -108,7 +108,7 @@ int gDrawChar(int x, int y, unsigned char c, int color) {
 
 void gDrawString(unsigned int x, unsigned int y, char* c, unsigned int color){
 	int pos=0;
-	for(int i=0;c[i]!='\0';i++){
+	for(int i=0;c[i]!='\0'&&i<30;i++){
 		if(c[i]==' '){
 			pos+=3;
 		}else{
