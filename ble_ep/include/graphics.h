@@ -5,6 +5,7 @@
 #include "font.h"
 unsigned char graphicsBuffer[1536];
 
+
 uint8_t displayDirty333;
 
 void gLine(int x0, int y0, int x1, int y1, int color);

@@ -25,7 +25,6 @@
  */
 
 #include <stdint.h>
-#include <string.h>
 #include "main.h"
 #include "nordic_common.h"
 #include "nrf.h"
@@ -34,14 +33,14 @@
 #include "nrf51_bitfields.h"
 #include "ble.h"
 #include "ble_hci.h"
-#include "ble_srv_common.h"
+//#include "ble_srv_common.h"
 #include "ble_advdata.h"
 #include "ble_conn_params.h"
 #include "ble_display_service.h"
 #include "app_scheduler.h"
 #include "softdevice_handler.h"
 #include "app_timer.h"
-#include "ble_error_log.h"
+//#include "ble_error_log.h"
 #include "app_gpiote.h"
 #include "app_button.h"
 #include "ble_debug_assert_handler.h"
@@ -109,7 +108,8 @@ static uint8_t m_status = BLE_GAP_STATUS_DISCONNECTED;
 void pstorage_sys_event_handler(uint32_t p_evt);
 
 void debug(char *msg) {
-	strncpy(txt[txt_p],msg,20);
+	//strncpy(txt[txt_p],msg,20);
+
 	//txt[txt_p] = msg;
 	txt_p = txt_p + 1;
 	if (txt_p == 5) {
@@ -673,6 +673,8 @@ int main(void) {
 	sec_params_init();
 	ADC_init();
 	epdBegin();
+	extern uint32_t __HeapLimit;
+	int i = __HeapLimit;
 	// Start execution
 	timers_start();
 	advertising_start();
