@@ -11,8 +11,7 @@
 #if !defined(DISPLAY_H)
 #define DISPLAY_H 1
 
-struct epd_t
-{
+struct epd_t {
 	uint8_t pinPanelOn;
 	uint8_t pinBorder;
 	uint8_t pinDischarge;
@@ -20,13 +19,11 @@ struct epd_t
 	uint8_t pinReset;
 	uint8_t pinBusy;
 
-
 	spi_master_config_t spi_config;
 	uint8_t pinCS;
 	uint8_t pinMISO;
 	uint8_t pinMOSI;
 	uint8_t pinCLK;
-
 
 	uint16_t stageTime;
 	uint16_t linesPerDisplay;
@@ -38,7 +35,7 @@ struct epd_t
 void epdSPIPut(uint8_t c);
 void spiEventHandler(spi_master_evt_t spi_master_evt);
 void epdSPIOn();
-void epdSPIOff() ;
+void epdSPIOff();
 void epdSPISend(uint8_t cs_pin, const uint8_t *buffer, uint16_t length);
 void epdSPIBuffer(uint8_t c);
 void epdPWMStart(int pin);
@@ -50,4 +47,9 @@ void epdBegin();
 void epdEnd();
 void epdFrame(const uint8_t *image);
 void epdLine(uint16_t line, const uint8_t *data, uint8_t fixed_value);
+
+void epdDeltaFrame(uint8_t *currentImage, uint8_t *newImage);
+void epdDeltaLine(uint16_t line, uint8_t *currentLine,
+		uint8_t *newLine, uint8_t fixed_value);
+
 #endif

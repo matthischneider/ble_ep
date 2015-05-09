@@ -24,7 +24,7 @@
  * with 'YOUR_JOB' indicates where and how you can customize.
  */
 
-#include <stdint.h>
+// include <stdint.h>
 #include "main.h"
 #include "nordic_common.h"
 #include "nrf.h"
@@ -43,10 +43,11 @@
 //#include "ble_error_log.h"
 #include "app_gpiote.h"
 #include "app_button.h"
-#include "ble_debug_assert_handler.h"
+//#include "ble_debug_assert_handler.h"
 #include "pstorage.h"
 #include "display.h"
 #include "graphics.h"
+//include "puff.h"
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include or not the service_changed characteristic. if not enabled, the server's database cannot be changed for the lifetime of the device*/
 
@@ -65,7 +66,7 @@
 #define APP_TIMER_OP_QUEUE_SIZE         4                                           /**< Size of timer operation queues. */
 
 #define MIN_CONN_INTERVAL               MSEC_TO_UNITS(7.5, UNIT_1_25_MS)            /**< Minimum acceptable connection interval (0.05 seconds). */
-#define MAX_CONN_INTERVAL               MSEC_TO_UNITS(40, UNIT_1_25_MS)           /**< Maximum acceptable connection interval (0.1 second). */
+#define MAX_CONN_INTERVAL               MSEC_TO_UNITS(15, UNIT_1_25_MS)           /**< Maximum acceptable connection interval (0.1 second). */
 #define SLAVE_LATENCY                   0                                           /**< Slave latency. */
 #define CONN_SUP_TIMEOUT                MSEC_TO_UNITS(4000, UNIT_10_MS)             /**< Connection supervisory timeout (4 seconds). */
 #define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
@@ -89,7 +90,7 @@
 static ble_gap_sec_params_t m_sec_params; /**< Security requirements for this application. */
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle of the current connection. */
 
-#define DISPLAY_INTERVAL APP_TIMER_TICKS(1000, APP_TIMER_PRESCALER)
+#define DISPLAY_INTERVAL APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER)
 static app_timer_id_t m_display_timer_id;
 static uint8_t blink = 0;
 static char* txt[5][30];
@@ -97,7 +98,6 @@ static int txt_p = 0;
 static uint32_t m_bat_voltage;
 static ble_display_service_t m_display_service;
 static uint8_t m_status = BLE_GAP_STATUS_DISCONNECTED;
-
 
 // YOUR_JOB: Modify these according to requirements (e.g. if other event types are to pass through
 //           the scheduler).
@@ -194,17 +194,17 @@ static void display_timer_timeout_handler(void * p_context) {
 	}
 
 	switch (m_status) {
-		case BLE_GAP_STATUS_ADVERTISING:
-			gFillRect(0, 0, 5, 5, blink);
-			break;
-		case BLE_GAP_STATUS_DISCONNECTED:
-			gFillRect(0, 0, 5, 5, 0);
-			break;
-		case BLE_GAP_STATUS_CONNECTED:
-			gFillRect(0, 0, 5, 5, 1);
-			break;
-		default:
-			break;
+	case BLE_GAP_STATUS_ADVERTISING:
+		gFillRect(0, 0, 5, 5, blink);
+		break;
+	case BLE_GAP_STATUS_DISCONNECTED:
+		gFillRect(0, 0, 5, 5, 0);
+		break;
+	case BLE_GAP_STATUS_CONNECTED:
+		gFillRect(0, 0, 5, 5, 1);
+		break;
+	default:
+		break;
 	}
 	if (blink == 0) {
 		blink = 1;
@@ -220,10 +220,7 @@ static void display_timer_timeout_handler(void * p_context) {
 		gFillRect(6, 0, 5, 5, 1);
 	}
 
-	//epdBegin();
-	epdFrame(graphicsBuffer);
-	//epdFrame(graphicsBuffer);
-	//epdEnd();
+	gUpdate();
 }
 
 /**@brief Function for the Timer initialization.
@@ -249,32 +246,30 @@ static void timers_init(void) {
 void ADC_init(void) {
 
 	/* Enable interrupt on ADC sample ready event*/
-		NRF_ADC->INTENSET = ADC_INTENSET_END_Msk;
-		sd_nvic_SetPriority(ADC_IRQn, NRF_APP_PRIORITY_LOW);
-		sd_nvic_EnableIRQ(ADC_IRQn);
+	NRF_ADC->INTENSET = ADC_INTENSET_END_Msk;
+	sd_nvic_SetPriority(ADC_IRQn, NRF_APP_PRIORITY_LOW);
+	sd_nvic_EnableIRQ(ADC_IRQn);
 
-		NRF_ADC->CONFIG	= (ADC_CONFIG_EXTREFSEL_None << ADC_CONFIG_EXTREFSEL_Pos) /* Bits 17..16 : ADC external reference pin selection. */
-										| (ADC_CONFIG_PSEL_AnalogInput7 << ADC_CONFIG_PSEL_Pos)					/*!< Use analog input 2 as analog input. */
-										| (ADC_CONFIG_REFSEL_VBG << ADC_CONFIG_REFSEL_Pos)							/*!< Use internal 1.2V bandgap voltage as reference for conversion. */
-										| (ADC_CONFIG_INPSEL_AnalogInputNoPrescaling << ADC_CONFIG_INPSEL_Pos) /*!< Analog input specified by PSEL with no prescaling used as input for the conversion. */
-										| (ADC_CONFIG_RES_10bit << ADC_CONFIG_RES_Pos);									/*!< 8bit ADC resolution. */
+	NRF_ADC->CONFIG = (ADC_CONFIG_EXTREFSEL_None << ADC_CONFIG_EXTREFSEL_Pos) /* Bits 17..16 : ADC external reference pin selection. */
+	| (ADC_CONFIG_PSEL_AnalogInput7 << ADC_CONFIG_PSEL_Pos) /*!< Use analog input 2 as analog input. */
+	| (ADC_CONFIG_REFSEL_VBG << ADC_CONFIG_REFSEL_Pos) /*!< Use internal 1.2V bandgap voltage as reference for conversion. */
+	| (ADC_CONFIG_INPSEL_AnalogInputNoPrescaling << ADC_CONFIG_INPSEL_Pos) /*!< Analog input specified by PSEL with no prescaling used as input for the conversion. */
+	| (ADC_CONFIG_RES_10bit << ADC_CONFIG_RES_Pos); /*!< 8bit ADC resolution. */
 
-		/* Enable ADC*/
-		NRF_ADC->ENABLE = ADC_ENABLE_ENABLE_Enabled;
+	/* Enable ADC*/
+	NRF_ADC->ENABLE = ADC_ENABLE_ENABLE_Enabled;
 }
 
-void ADC_IRQHandler(void)
-{
+void ADC_IRQHandler(void) {
 	/* Clear dataready event */
-  NRF_ADC->EVENTS_END = 0;
+	NRF_ADC->EVENTS_END = 0;
 
-  m_bat_voltage=NRF_ADC->RESULT;
-  m_bat_voltage = (m_bat_voltage * 1200 / 1024);
-  m_bat_voltage = m_bat_voltage * 122/22;
+	m_bat_voltage = NRF_ADC->RESULT;
+	m_bat_voltage = (m_bat_voltage * 1200 / 1024);
+	m_bat_voltage = m_bat_voltage * 122 / 22;
 
-
-  //Use the STOP task to save current. Workaround for PAN_028 rev1.5 anomaly 1.
-  NRF_ADC->TASKS_STOP = 1;
+	//Use the STOP task to save current. Workaround for PAN_028 rev1.5 anomaly 1.
+	NRF_ADC->TASKS_STOP = 1;
 
 	//Release the external crystal
 	sd_clock_hfclk_release();
@@ -293,7 +288,7 @@ static void gap_params_init(void) {
 	BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
 
 	err_code = sd_ble_gap_device_name_set(&sec_mode,
-			(const uint8_t *) DEVICE_NAME, strlen(DEVICE_NAME));
+			(const uint8_t *) DEVICE_NAME, 3);
 	APP_ERROR_CHECK(err_code);
 
 	/* YOUR_JOB: Use an appearance value matching the application's use case.
@@ -322,7 +317,8 @@ static void advertising_init(void) {
 	uint8_t flags = BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
 
 	// YOUR_JOB: Use UUIDs for service(s) used in your application.
-	ble_uuid_t adv_uuids[] = {{DISPLAY_SERVICE_UUID_SERVICE, m_display_service.uuid_type}};
+	ble_uuid_t adv_uuids[] = { { DISPLAY_SERVICE_UUID_SERVICE,
+			m_display_service.uuid_type } };
 
 	// Build and set advertising data
 	memset(&advdata, 0, sizeof(advdata));
@@ -338,21 +334,21 @@ static void advertising_init(void) {
 	APP_ERROR_CHECK(err_code);
 }
 
-static void display_write_handler(ble_display_service_t * p_display_service, char *msg)
-{
-    debug(msg);
+static void display_write_handler(ble_display_service_t * p_display_service,
+		char *msg) {
+	debug(msg);
 }
 
 /**@brief Function for initializing services that will be used by the application.
  */
 static void services_init(void) {
 	uint32_t err_code;
-	    ble_display_service_init_t init;
+	ble_display_service_init_t init;
 
-	    init.write_handler = display_write_handler;
+	init.write_handler = display_write_handler;
 
-	    err_code = ble_display_service_init(&m_display_service, &init);
-	    APP_ERROR_CHECK(err_code);
+	err_code = ble_display_service_init(&m_display_service, &init);
+	APP_ERROR_CHECK(err_code);
 }
 
 /**@brief Function for initializing security parameters.
@@ -520,7 +516,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 			m_status = BLE_GAP_STATUS_DISCONNECTED;
 
 			// Configure buttons with sense level low as wakeup source.
-			nrf_gpio_cfg_sense_input(WAKEUP_BUTTON_PIN,	BUTTON_PULL, NRF_GPIO_PIN_SENSE_LOW);
+			nrf_gpio_cfg_sense_input(WAKEUP_BUTTON_PIN, BUTTON_PULL,
+					NRF_GPIO_PIN_SENSE_LOW);
 
 			// Go to system-off mode (this function will not return; wakeup will cause a reset)
 			epdEnd();
@@ -661,6 +658,7 @@ static void display_init(void) {
 int main(void) {
 	// Initialize
 	display_init();
+
 	timers_init();
 	gpiote_init();
 	buttons_init();
@@ -672,14 +670,14 @@ int main(void) {
 	conn_params_init();
 	sec_params_init();
 	ADC_init();
-	epdBegin();
-	extern uint32_t __HeapLimit;
-	int i = __HeapLimit;
+
 	// Start execution
+	gInit();
+
 	timers_start();
 	advertising_start();
-
 	// Enter main loop
+
 
 	for (;;) {
 		app_sched_execute();
@@ -687,8 +685,6 @@ int main(void) {
 	}
 	//epdEnd();
 }
-
-
 
 /**
  * @}

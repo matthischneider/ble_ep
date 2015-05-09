@@ -1,17 +1,16 @@
 #include "graphics.h"
-
+uint8_t line;
 void gSetPixel(int x, int y, int color) {
 	if (x < 128 && y < 96 && x >= 0 && y >= 0) {
-
 		int bytePos = x / 8 + y * epd.bytesPerLine;
 		int mask = 1 << (x % 8);
 		if (color) {
-			graphicsBuffer[bytePos] |= mask;
+			currentBuffer[bytePos] |= mask;
 		} else {
-			graphicsBuffer[bytePos] &= ~mask;
+			currentBuffer[bytePos] &= ~mask;
 		}
 	}
-	displayDirty333=1;
+	displayDirty = 1;
 }
 
 void gLine(int x0, int y0, int x1, int y1, int color) {
@@ -83,13 +82,13 @@ void gFillRect(int x0, int y0, int w, int h, int color) {
 	}
 }
 
-int getFontPixel(unsigned int x,unsigned  int y, unsigned char c) {
+int getFontPixel(unsigned int x, unsigned int y, unsigned char c) {
 	if (x < font_width && y < font_height) {
-		int bytePos = x / 8 + y * font_width/8;
-		int shift = 7-(x % 8);
-		int mask = 1<<shift ;
-		return (font_bits[bytePos] & mask)>>shift;
-	}else{
+		int bytePos = x / 8 + y * font_width / 8;
+		int shift = 7 - (x % 8);
+		int mask = 1 << shift;
+		return (font_bits[bytePos] & mask) >> shift;
+	} else {
 		return -1;
 	}
 }
@@ -97,22 +96,57 @@ int getFontPixel(unsigned int x,unsigned  int y, unsigned char c) {
 int gDrawChar(int x, int y, unsigned char c, int color) {
 	int startX = char_pos[c];
 	int endX = char_pos[c + 1];
-	int width = endX- startX;
-	for(int i=0; i< width; i++){
-		for(uint32_t j=0; j< font_height; j++){
-			gSetPixel(x+i,y+j,getFontPixel(startX+i,j,c));
+	int width = endX - startX;
+	for (int i = 0; i < width; i++) {
+		for (uint32_t j = 0; j < font_height; j++) {
+			gSetPixel(x + i, y + j, getFontPixel(startX + i, j, c));
 		}
 	}
 	return width;
 }
 
-void gDrawString(unsigned int x, unsigned int y, char* c, unsigned int color){
-	int pos=0;
-	for(int i=0;c[i]!='\0'&&i<30;i++){
-		if(c[i]==' '){
-			pos+=3;
-		}else{
-			pos += gDrawChar(x+pos,y,c[i],color) +1;
+void gDrawString(unsigned int x, unsigned int y, char* c, unsigned int color) {
+	int pos = 0;
+	for (int i = 0; c[i] != '\0' && i < 30; i++) {
+		if (c[i] == ' ') {
+			pos += 3;
+		} else {
+			pos += gDrawChar(x + pos, y, c[i], color) + 1;
 		}
 	}
+}
+void switchBuffers() {
+	/*unsigned char* swap;
+	 swap = currentBuffer;
+	 currentBuffer = lastBuffer;
+	 lastBuffer = swap;*/
+	for (int i = 0; i < epd.linesPerDisplay * epd.dotsPerLine / 8; i++) {
+		lastBuffer[i] = currentBuffer[i];
+	}
+
+}
+
+void gUpdate() {
+	epdBegin();
+	epdSPIOn();
+
+	do {
+		displayDirty = 0;
+		for (line = 0; line < epd.linesPerDisplay; ++line) {
+			epdDeltaLine(line, &currentBuffer[line * epd.bytesPerLine],
+					&lastBuffer[line * epd.bytesPerLine], 0);
+		}
+	} while (displayDirty);
+	epdSPIOff();
+	epdEnd();
+	switchBuffers();
+}
+
+void gInit() {
+	currentBuffer = buffer[0];
+	lastBuffer = buffer[1];
+	epdBegin();
+	epdFrame(&lastBuffer);
+	epdEnd();
+
 }

@@ -138,7 +138,7 @@ void epdBegin() {
 
 	// power up sequence
 	nrf_gpio_pin_write(epd.pinReset, 0);
-	nrf_gpio_pin_write(epd.pinPanelOn, 0);
+	nrf_gpio_pin_write(epd.pinPanelOn, 1);
 	nrf_gpio_pin_write(epd.pinDischarge, 0);
 	nrf_gpio_pin_write(epd.pinBorder, 0);
 	nrf_gpio_pin_write(epd.pinCS, 0);
@@ -147,11 +147,20 @@ void epdBegin() {
 	nrf_gpio_pin_write(epd.pinPWM, 0);
 	nrf_gpio_pin_write(epd.pinPWM, 1);
 
+
+	nrf_gpio_pin_write(epd.pinCS, 0);
+	nrf_gpio_pin_write(epd.pinCS, 1);
+	nrf_gpio_pin_write(epd.pinCS, 0);
+	nrf_gpio_pin_write(epd.pinReset, 0);
+	nrf_gpio_pin_write(epd.pinReset, 1);
+	nrf_gpio_pin_write(epd.pinReset, 0);
+
+
 	epdSPIOn();
 
 	epdPWMStart(epd.pinPWM);
 	nrf_delay_ms(5);                       // Al0 time for PWN to start up
-	nrf_gpio_pin_write(epd.pinPanelOn, 1);
+	nrf_gpio_pin_write(epd.pinPanelOn, 0);
 	nrf_delay_ms(10);
 
 	nrf_gpio_pin_write(epd.pinReset, 1);
@@ -336,7 +345,7 @@ void epdEnd() {
 
 	// turn of power and all signals
 	nrf_gpio_pin_write(epd.pinReset, 0);
-	nrf_gpio_pin_write(epd.pinPanelOn, 0);
+	nrf_gpio_pin_write(epd.pinPanelOn, 1);
 	nrf_gpio_pin_write(epd.pinBorder, 0);
 
 	// ensure SPI MOSI and CLOCK are 0 before CS 0
@@ -428,6 +437,97 @@ void epdLine(uint16_t line, const uint8_t *data,
 	nrf_gpio_pin_write(epd.pinCS, 1);
 
 	// output data to panel
+	nrf_delay_us(delay);
+	epdSPISend(epd.pinCS, CU8(0x70, 0x02), 2);
+	nrf_delay_us(delay);
+	epdSPISend(epd.pinCS, CU8(0x72, 0x2f), 2);
+
+	//epdSPIoff();
+}
+
+void epdDeltaFrame( uint8_t *currentImage,  uint8_t *newImage) {
+	epdSPIOn();
+	for (uint8_t line = 0; line < epd.linesPerDisplay; ++line) {
+		epdDeltaLine(line, &currentImage[line * epd.bytesPerLine], &newImage[line * epd.bytesPerLine], 0);
+	}
+	epdSPIOff();
+}
+
+void epdDeltaLine(uint16_t line,  uint8_t *currentLine,  uint8_t *newLine,
+		uint8_t fixed_value) {
+
+	int delay = 10;
+	cursor = 0;
+	//epdSPIon();
+
+	// gate and source voltage levels
+	nrf_delay_us(delay);
+	epdSPISend(epd.pinCS, CU8(0x70, 0x04), 2);
+	nrf_delay_us(delay);
+	epdSPISend(epd.pinCS, CU8(0x72, 0x03), 2);
+
+	// send newLine
+	nrf_delay_us(delay);
+	epdSPISend(epd.pinCS, CU8(0x70, 0x0a), 2);
+	nrf_delay_us(delay);
+
+	// CS 0
+	nrf_gpio_pin_write(epd.pinCS, 0);
+	epdSPIBuffer(0x72);
+	epdSPIBuffer(0x00);
+
+	// even pixels
+	for (uint16_t b = epd.bytesPerLine; b > 0; --b) {
+		if (0 != newLine) {
+			uint8_t pixels;
+			uint8_t delta;
+
+			pixels = newLine[b - 1] & 0xaa;
+			delta = (newLine[b-1] ^ currentLine[b-1]) & 0xaa;
+			pixels = delta | (pixels >> 1);
+			epdSPIBuffer(pixels);
+		} else {
+			epdSPIBuffer(fixed_value);
+		}
+	}
+
+	// scan line
+	for (uint16_t b = 0; b < epd.bytesPerScan; ++b) {
+		if (line / 4 == b) {
+			epdSPIBuffer(0xc0 >> (2 * (line & 0x03)));
+		} else {
+			epdSPIBuffer(0x00);
+		}
+	}
+
+	// odd pixels
+	for (uint16_t b = 0; b < epd.bytesPerLine; ++b) {
+		if (0 != newLine) {
+			// AVR has multiple memory spaces
+			uint8_t pixels;
+			uint8_t delta;
+
+			pixels = newLine[b] & 0x55;
+			delta = (newLine[b]^currentLine[b])&0xaa;
+			pixels = delta | pixels;
+
+			uint8_t p1 = (pixels >> 6) & 0x03;
+			uint8_t p2 = (pixels >> 4) & 0x03;
+			uint8_t p3 = (pixels >> 2) & 0x03;
+			uint8_t p4 = (pixels >> 0) & 0x03;
+			pixels = (p1 << 0) | (p2 << 2) | (p3 << 4) | (p4 << 6);
+			epdSPIBuffer(pixels);
+		} else {
+			epdSPIBuffer(fixed_value);
+		}
+	}
+
+	spi_master_send_recv(SPI_MASTER_HW, m_tx_data, cursor, m_rx_data, 2);
+
+	// CS 1
+	nrf_gpio_pin_write(epd.pinCS, 1);
+
+	// output newLine to panel
 	nrf_delay_us(delay);
 	epdSPISend(epd.pinCS, CU8(0x70, 0x02), 2);
 	nrf_delay_us(delay);

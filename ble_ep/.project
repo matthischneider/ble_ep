@@ -56,11 +56,6 @@
 			<locationURI>NordicSDK/nrf51822/Source/ble/ble_conn_params.c</locationURI>
 		</link>
 		<link>
-			<name>src/ble_srv_common.c</name>
-			<type>1</type>
-			<locationURI>NordicSDK/nrf51822/Source/ble/ble_services/ble_srv_common.c</locationURI>
-		</link>
-		<link>
 			<name>src/crc16.c</name>
 			<type>1</type>
 			<locationURI>NordicSDK/nrf51822/Source/app_common/crc16.c</locationURI>
